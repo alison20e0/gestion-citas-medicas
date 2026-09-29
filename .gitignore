@@ -1,0 +1,40 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Java / Maven / Spring Boot
+target/
+*.jar
+*.war
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+db.sqlite3
+staticfiles/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Binaries / IDE
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+.idea/
+.vscode/
+*.iml
