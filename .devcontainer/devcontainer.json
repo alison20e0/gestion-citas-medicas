@@ -1,28 +1,25 @@
 {
   "name": "gestion-citas-medicas",
   "dockerComposeFile": "../docker-compose.yml",
-  "service": "web",
-  "workspaceFolder": "/workspace",
+  "service": "app",
+  "workspaceFolder": "/app",
   "shutdownAction": "stopCompose",
-  "forwardPorts": [8000, 5432],
+  "forwardPorts": [8080, 5432],
   "portsAttributes": {
-    "8000": { "label": "django-web" },
+    "8080": { "label": "spring-boot-web" },
     "5432": { "label": "postgres" }
   },
   "customizations": {
     "vscode": {
       "extensions": [
-        "ms-python.python",
-        "ms-python.vscode-pylance",
-        "ms-python.black-formatter",
-        "charliermarsh.ruff",
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-boot-dev-pack",
         "mtxr.sqltools",
         "mtxr.sqltools-driver-pg",
         "ms-azuretools.vscode-docker"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
-        "python.terminal.activateEnvironment": false
+        "java.configuration.updateBuildConfiguration": "automatic"
       }
     }
   }

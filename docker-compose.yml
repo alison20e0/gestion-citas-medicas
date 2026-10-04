@@ -1,44 +1,49 @@
 services:
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: citas-web
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings
-      DEBUG: "1"
-      DB_ENGINE: django.db.backends.postgresql
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: citas_db
-      DB_USER: ${DB_USER:-admin}
-      DB_PASSWORD: ${DB_PASSWORD:-secretpassword123}
-    volumes:
-      - .:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: citas-postgres
     restart: unless-stopped
-    ports:
-      - "5432:5432"
     environment:
-      POSTGRES_DB: citas_db
+      POSTGRES_DB: ${DB_NAME:-citas_db}
       POSTGRES_USER: ${DB_USER:-admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secretpassword123}
+    ports:
+      - "${DB_PORT_PUBLISHED:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d citas_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-citas_db}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: citas-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      SERVER_PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-citas_db}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD:-secretpassword123}
+      CITA_ZONA_HORARIA: ${CITA_ZONA_HORARIA:-America/Mexico_City}
+      NOTIFICACIONES_HABILITADAS: ${NOTIFICACIONES_HABILITADAS:-true}
+      NOTIFICACIONES_SIMULAR_FALLO: ${NOTIFICACIONES_SIMULAR_FALLO:-false}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
 volumes:
   postgres_data:

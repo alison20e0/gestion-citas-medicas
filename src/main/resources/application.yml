@@ -1,0 +1,60 @@
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: gestion-citas-medicas
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:citas_db}
+    username: ${DB_USER:admin}
+    password: ${DB_PASSWORD:secretpassword123}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 10000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+          batch_size: 30
+        order_inserts: true
+        order_updates: true
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+citas:
+  zona-horaria: ${CITA_ZONA_HORARIA:America/Mexico_City}
+  notificaciones:
+    habilitadas: ${NOTIFICACIONES_HABILITADAS:true}
+    horas-anticipacion: 24
+    max-intentos: 4
+    espera-reintento-inicial: 30s
+    backoff-multiplicador: 2.0
+    intervalo-barrido: 60s
+    lote-maximo: 25
+    simulacion-fallo: ${NOTIFICACIONES_SIMULAR_FALLO:false}
+    disparador-fallo: "#fallar"
+    simulacion-latencia: 120ms
+
+logging:
+  level:
+    com.citasmedicas: INFO
+    org.hibernate.SQL: WARN

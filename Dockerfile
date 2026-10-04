@@ -1,20 +1,23 @@
-FROM python:3.11-slim
+FROM maven:3.9-eclipse-temurin-21 AS build
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+WORKDIR /workspace
 
+COPY pom.xml ./
+RUN mvn -B -ntp dependency:go-offline
+
+COPY src ./src
+RUN mvn -B -ntp -DskipTests package
+
+FROM eclipse-temurin:21-jre-alpine
+
+RUN addgroup -S spring && adduser -S spring -G spring
 WORKDIR /app
+COPY --from=build /workspace/target/gestion-citas-medicas.jar app.jar
+RUN chown -R spring:spring /app
+USER spring:spring
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+EXPOSE 8080
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
 
-COPY . .
-
-EXPOSE 8000
-
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"]
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
