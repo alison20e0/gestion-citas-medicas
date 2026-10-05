@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gestión de Citas Médicas</title><style>*{box-sizing:border-box}body{font:15px/1.45 'Segoe UI',system-ui,sans-serif;margin:0;background:#f3f5f9;color:#1d2433}
+header{background:#1F3864;color:#fff;padding:20px 24px}h1{margin:0;font-size:22px}header p{margin:4px 0 0;opacity:.8;font-size:13px}
+main{max-width:980px;margin:18px auto;padding:0 14px}h2{font-size:16px;margin:0 0 10px}
+.k{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.c{background:#fff;border-radius:8px;padding:14px;border:1px solid #dde2ec;margin-bottom:14px;overflow-x:auto}.k .c{margin:0}
+.k b{display:block;font-size:26px;color:#1F3864}.k span{font-size:12px;color:#667}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid #eef0f5;font-size:14px;vertical-align:top}th{color:#556}
+button,select,input{font:inherit;padding:7px 12px;border-radius:6px;border:1px solid #b9c0cf;background:#fff}
+button{cursor:pointer;background:#1F3864;color:#fff;border:0;margin:2px 4px 2px 0}button.g{background:#2e7d32}button.x{background:#e6e9f0;color:#333}button:disabled{opacity:.4;cursor:default}
+.t{padding:2px 9px;border-radius:10px;font-size:12px;background:#e3eefc;white-space:nowrap}.ok{background:#e4f4e6;color:#2e7d32}.no{background:#fde8e8;color:#c62828}.wa{background:#fff1de;color:#b85c00}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row label{display:flex;flex-direction:column;font-size:12px;color:#556;gap:3px}
+.log{font:12px/1.6 Consolas,monospace;color:#445;max-height:170px;overflow:auto}footer{text-align:center;font-size:12px;color:#778;padding:16px}</style></head><body>
+<header><h1>Gestión de Citas Médicas</h1><p>Disponibilidad, reserva, cancelación y recordatorios</p></header><main><div class="c"><div class="row"><label>Usuario<select id="u"><option>Ana (paciente)</option><option>Luis (paciente)</option><option>Recepción</option></select></label><label>Médico<select id="d"><option>Dra. Ruiz</option><option>Dr. Mora</option></select></label></div></div>
+<div class="c"><h2>Horarios de hoy</h2><table><tbody id="tb"></tbody></table><p><button class="x" onclick="dup()">Simular dos reservas simultáneas (10:00)</button></p><div id="m"></div></div>
+<div class="c"><h2>Recordatorios</h2><label><input type="checkbox" id="f"> Simular falla del proveedor de correo</label> <button onclick="rem()">Enviar recordatorios</button><div id="rm" class="log">Sin recordatorios.</div></div>
+<div class="c"><h2>Auditoría</h2><div class="log" id="lg"></div></div></main>
+<footer>Prototipo con datos simulados (sin servidor). La implementación con Docker está en el repositorio <b>gestion-citas-medicas</b>.</footer>
+<script>const $=id=>document.getElementById(id),hm=()=>new Date().toLocaleTimeString('es-EC');const H=['09:00','10:00','11:00','12:00'],C={},Rm=[],L=[];const us=()=>$('u').value.split(' ')[0],md=()=>$('d').value;
+function msg(t,c){$('m').innerHTML='<span class="t '+c+'">'+t+'</span>'}
+function res(h,u){const k=md()+h;if(C[k]){L.unshift(hm()+' RESERVA '+k+' rechazada → 409 horario ocupado');msg('409: el horario ya está reservado.','no');return false}
+C[k]=u;Rm.push({k,u,n:0,e:'PENDIENTE'});L.unshift(hm()+' RESERVA '+k+' por '+u);msg('Cita reservada.','ok');return true}
+function can(h){const k=md()+h;if(us()!='Recepción'&&C[k]!=us()){L.unshift(hm()+' CANCELAR '+k+' denegado (403) a '+us());msg('403: solo puedes cancelar tus citas.','no');return draw()}
+delete C[k];Rm.forEach(r=>{if(r.k==k)r.e='CANCELADO'});L.unshift(hm()+' CANCELAR '+k+' por '+us());msg('Cita cancelada.','wa');draw()}
+function dup(){const k=md()+'10:00';delete C[k];res('10:00','Ana');res('10:00','Luis');draw()}
+function rem(){Rm.filter(r=>r.e=='PENDIENTE').forEach(r=>{if($('f').checked){r.n++;r.e=r.n>=4?'DESCARTADO':'PENDIENTE'}else r.e='ENVIADO'});draw()}
+function draw(){$('tb').innerHTML=H.map(h=>{const o=C[md()+h];return'<tr><td>'+h+'</td><td>'+(o?'<span class="t no">Ocupado: '+o+'</span>':'<span class="t ok">Libre</span>')+'</td><td>'+(o?'<button class="x" onclick="can(\''+h+'\')">Cancelar</button>':'<button onclick="if(res(\''+h+'\',us()))draw()">Reservar</button>')+'</td></tr>'}).join('');
+$('rm').innerHTML=Rm.length?Rm.map(r=>r.k+' · '+r.u+' · <b>'+r.e+'</b> (intentos de reenvío: '+r.n+')').join('<br>'):'Sin recordatorios.';$('lg').innerHTML=L.join('<br>')||'Sin acciones.'}
+$('d').onchange=draw;draw();</script></body></html>
