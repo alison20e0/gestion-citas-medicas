@@ -1,6 +1,5 @@
 package com.citasmedicas.notificacion;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -102,6 +101,9 @@ public class NotificacionProcesador {
         if (envio.getEstado() == EstadoEnvio.ENVIADO) {
             throw new ConflictException("NOTIFICACION_Y_ENVIADA", "La notificacion ya fue entregada");
         }
+        if (envio.getEstado() == EstadoEnvio.DESCARTADO) {
+            envio.reabrir();
+        }
         envio.registrarIntentoFallido("Reintento solicitado manualmente", Instant.now());
         envioRepository.save(envio);
         enviarUno(envioId);
@@ -111,12 +113,14 @@ public class NotificacionProcesador {
     }
 
     private void registrarFallo(NotificacionEnvio envio, Cita cita, String mensaje) {
-        Duration espera = properties.notificaciones().esperaEntreIntentos(envio.getIntentos() + 1);
-        envio.registrarIntentoFallido(mensaje, Instant.now().plus(espera));
+        envio.registrarIntentoFallido(mensaje, Instant.now());
+        if (envio.getIntentos() >= properties.notificaciones().maxIntentos()) {
+            envio.descartar("Se agotaron los intentos permitidos. Ultimo error: " + mensaje);
+        }
         envioRepository.save(envio);
         auditoriaService.registrar(cita, TipoAccionAuditoria.NOTIFICACION_FALLIDA, null, null,
                 "Fallo el envio de la notificacion, " + mensaje, "sistema");
-        log.warn("Notificacion {} fallo en el intento {}, proximo reintento en {}", envio.getId(), envio.getIntentos(),
-                espera);
+        log.warn("Notificacion {} fallo en el intento {}, estado {}",
+                envio.getId(), envio.getIntentos(), envio.getEstado());
     }
 }

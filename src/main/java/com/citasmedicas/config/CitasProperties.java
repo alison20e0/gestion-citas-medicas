@@ -1,6 +1,7 @@
 package com.citasmedicas.config;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 
@@ -14,7 +15,7 @@ public record CitasProperties(String zonaHoraria, Notificaciones notificaciones)
     }
 
     public ZoneOffset offsetPorDefecto() {
-        return zoneId().getRules().getDefault();
+        return zoneId().getRules().getOffset(Instant.now());
     }
 
     public record Notificaciones(
@@ -23,7 +24,7 @@ public record CitasProperties(String zonaHoraria, Notificaciones notificaciones)
             int maxIntentos,
             Duration esperaReintentoInicial,
             double backoffMultiplicador,
-            Duration intervaloBarrido,
+            long intervaloBarridoMilis,
             int loteMaximo,
             boolean simulacionFallo,
             String disparadorFallo,

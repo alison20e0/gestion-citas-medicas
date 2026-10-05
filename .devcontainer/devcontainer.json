@@ -4,10 +4,10 @@
   "service": "app",
   "workspaceFolder": "/app",
   "shutdownAction": "stopCompose",
-  "forwardPorts": [8080, 5432],
+  "forwardPorts": [8083, 5443],
   "portsAttributes": {
-    "8080": { "label": "spring-boot-web" },
-    "5432": { "label": "postgres" }
+    "8083": { "label": "spring-boot-web" },
+    "5443": { "label": "postgres" }
   },
   "customizations": {
     "vscode": {

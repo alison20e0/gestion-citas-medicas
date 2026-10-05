@@ -106,6 +106,12 @@ public class NotificacionEnvio {
         this.ultimoError = motivo;
     }
 
+    public void reabrir() {
+        this.estado = EstadoEnvio.PENDIENTE;
+        this.intentos = 0;
+        this.ultimoError = null;
+    }
+
     public UUID getId() {
         return id;
     }

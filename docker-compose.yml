@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${DB_USER:-admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secretpassword123}
     ports:
-      - "${DB_PORT_PUBLISHED:-5432}:5432"
+      - "${DB_PORT_PUBLISHED:-5443}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,17 +27,23 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "${APP_PORT:-8083}:8080"
     environment:
       SERVER_PORT: 8080
+      TZ: ${TZ:-America/Guayaquil}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-citas_db}
       DB_USER: ${DB_USER:-admin}
       DB_PASSWORD: ${DB_PASSWORD:-secretpassword123}
-      CITA_ZONA_HORARIA: ${CITA_ZONA_HORARIA:-America/Mexico_City}
+      CITA_ZONA_HORARIA: ${CITA_ZONA_HORARIA:-America/Guayaquil}
       NOTIFICACIONES_HABILITADAS: ${NOTIFICACIONES_HABILITADAS:-true}
       NOTIFICACIONES_SIMULAR_FALLO: ${NOTIFICACIONES_SIMULAR_FALLO:-false}
+      NOTIFICACIONES_HORAS_ANTICIPACION: ${NOTIFICACIONES_HORAS_ANTICIPACION:-24}
+      NOTIFICACIONES_MAX_INTENTOS: ${NOTIFICACIONES_MAX_INTENTOS:-4}
+      NOTIFICACIONES_ESPERA_REINTENTO: ${NOTIFICACIONES_ESPERA_REINTENTO:-30s}
+      NOTIFICACIONES_INTERVALO_BARRIDO_MS: ${NOTIFICACIONES_INTERVALO_BARRIDO_MS:-60000}
+      NOTIFICACIONES_LATENCIA: ${NOTIFICACIONES_LATENCIA:-120ms}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
       interval: 15s

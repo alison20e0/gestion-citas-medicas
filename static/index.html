@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestion de citas medicas</title>
+<style>
+  :root { --borde:#d7dee8; --texto:#1f2933; --gris:#5b6b7c; --primario:#0b6b5b; --error:#b3261e; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, "Segoe UI", Arial, sans-serif; color:var(--texto); background:#f4f6f9; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  .sub { color:var(--gris); font-size: 14px; margin: 0 0 20px; }
+  section { background:#fff; border:1px solid var(--borde); border-radius:8px; padding:16px; margin-bottom:16px; }
+  .fila { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+  label { display:flex; flex-direction:column; font-size:13px; color:var(--gris); gap:4px; }
+  select, input { font:inherit; padding:7px 9px; border:1px solid var(--borde); border-radius:6px; background:#fff; min-width:190px; }
+  button { font:inherit; padding:8px 14px; border:0; border-radius:6px; background:var(--primario); color:#fff; cursor:pointer; }
+  button.secundario { background:#fff; color:var(--primario); border:1px solid var(--primario); }
+  button:disabled { opacity:.55; cursor:not-allowed; }
+  .aviso { margin-top:14px; padding:10px 12px; border-radius:6px; font-size:14px; display:none; }
+  .aviso.visible { display:block; }
+  .aviso.ok { background:#e6f4f1; border:1px solid #9fd3c8; }
+  .aviso.mal { background:#fdecea; border:1px solid #f2b8b5; color:var(--error); }
+  table { width:100%; border-collapse:collapse; margin-top:12px; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--borde); }
+  th { color:var(--gris); font-weight:600; font-size:13px; }
+  td.estado { text-align:right; }
+  .slot { font-variant-numeric: tabular-nums; }
+  .slot button { background:#fff; color:var(--primario); border:1px solid var(--primario); padding:4px 10px; }
+  .slot.ocupado { color:#98a4b3; }
+  .pie { font-size:12px; color:var(--gris); }
+  code { background:#eef1f5; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Gestion de citas medicas</h1>
+  <p class="sub">Pagina de demostracion. Busca un horario libre y reservalo usando la API.
+     No se guarda informacion clinica, solo datos de agenda y contacto.</p>
+
+  <section>
+    <h2>1. Identidad simulada</h2>
+    <div class="fila">
+      <label>Usuario (UUID)
+        <input id="usuarioId" value="99999999-9999-9999-9999-999999999999" size="40">
+      </label>
+      <label>Rol
+        <select id="rol">
+          <option>RECEPCION</option>
+          <option>PACIENTE</option>
+          <option>MEDICO</option>
+          <option>ADMIN</option>
+        </select>
+      </label>
+    </div>
+    <p class="pie">La API espera los encabezados <code>X-Usuario-Id</code> y <code>X-Rol</code>.</p>
+  </section>
+
+  <section>
+    <h2>2. Buscar disponibilidad</h2>
+    <div class="fila">
+      <label>Medico
+        <select id="medico"></select>
+      </label>
+      <label>Fecha
+        <input id="fecha" type="date">
+      </label>
+      <button id="buscar" class="secundario">Buscar horarios</button>
+    </div>
+    <div id="avisoDisponibilidad" class="aviso"></div>
+    <table id="tablaDisponibilidad" hidden>
+      <thead><tr><th>Hora local</th><th>Fin</th><th>Estado</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>3. Reservar</h2>
+    <div class="fila">
+      <label>Paciente (UUID)
+        <select id="paciente"></select>
+      </label>
+      <label>Motivo de la solicitud (opcional)
+        <input id="motivo" placeholder="Ej. renovacion de receta">
+      </label>
+      <button id="reservar" disabled>Reservar horario seleccionado</button>
+    </div>
+    <div id="avisoReserva" class="aviso"></div>
+    <p class="pie">El horario elegido se marca con <code>horario seleccionado</code>.</p>
+  </section>
+</main>
+
+<script>
+  const API = window.location.origin;
+  const $ = (id) => document.getElementById(id);
+  let slotSeleccionado = null;
+
+  function encabezado() {
+    return { 'Content-Type': 'application/json', 'X-Usuario-Id': $('usuarioId').value.trim(), 'X-Rol': $('rol').value };
+  }
+
+  function aviso(elemento, texto, ok) {
+    elemento.textContent = texto;
+    elemento.className = 'aviso visible ' + (ok ? 'ok' : 'mal');
+  }
+
+  function horaLocal(iso, zona) {
+    return new Date(iso).toLocaleTimeString('es-EC', { timeZone: zona, hour: '2-digit', minute: '2-digit' });
+  }
+
+  async function pedir(ruta, opciones = {}) {
+    const respuesta = await fetch(API + ruta, { ...opciones, headers: encabezado() });
+    const texto = await respuesta.text();
+    let cuerpo = null;
+    try { cuerpo = texto ? JSON.parse(texto) : null; } catch (e) { cuerpo = texto; }
+    return { estado: respuesta.status, cuerpo };
+  }
+
+  async function cargarMedicos() {
+    const { estado, cuerpo } = await pedir('/api/v1/medicos');
+    if (estado !== 200) {
+      return aviso($('avisoDisponibilidad'), 'No se pudo cargar el catalogo de medicos (HTTP ' + estado + ').', false);
+    }
+    $('medico').innerHTML = cuerpo
+      .map((m) => `<option value="${m.id}">${m.nombres} ${m.apellidos} - ${m.especialidad}</option>`)
+      .join('');
+  }
+
+  async function cargarPacientes() {
+    const { estado, cuerpo } = await pedir('/api/v1/pacientes');
+    if (estado !== 200) {
+      $('paciente').innerHTML = '<option value="">Sin permiso para listar pacientes</option>';
+      return;
+    }
+    $('paciente').innerHTML = cuerpo
+      .map((p) => `<option value="${p.id}">${p.nombres} ${p.apellidos} (${p.documento})</option>`)
+      .join('');
+  }
+
+  function zonaHoraria() {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Guayaquil';
+  }
+
+  async function buscarDisponibilidad() {
+    const tabla = $('tablaDisponibilidad');
+    tabla.hidden = true;
+    slotSeleccionado = null;
+    $('reservar').disabled = true;
+    const medicoId = $('medico').value;
+    const fecha = $('fecha').value;
+    if (!medicoId || !fecha) {
+      return aviso($('avisoDisponibilidad'), 'Selecciona medico y fecha.', false);
+    }
+    const { estado, cuerpo } = await pedir(`/api/v1/citas/disponibilidad?medicoId=${medicoId}&fecha=${fecha}`);
+    if (estado !== 200) {
+      return aviso($('avisoDisponibilidad'), cuerpo.codigo + ': ' + cuerpo.mensaje, false);
+    }
+    aviso($('avisoDisponibilidad'),
+      `${cuerpo.medico} - ${cuerpo.slotsDisponibles} de ${cuerpo.totalSlots} horarios libres.`, true);
+
+    const zona = zonaHoraria();
+    tabla.querySelector('tbody').innerHTML = cuerpo.slots
+      .map((slot) => `<tr data-inicio="${slot.inicio}">
+          <td class="slot">${horaLocal(slot.inicio, zona)}</td>
+          <td class="slot">${horaLocal(slot.fin, zona)}</td>
+          <td>${slot.disponible ? 'Libre' : 'Ocupado'}</td>
+          <td class="estado"></td>
+        </tr>`)
+      .join('');
+    tabla.hidden = false;
+
+    tabla.querySelectorAll('tr[data-inicio]').forEach((fila) => {
+      const slot = cuerpo.slots.find((item) => item.inicio === fila.dataset.inicio);
+      const celda = fila.querySelector('td.estado');
+      if (!slot.disponible) {
+        fila.classList.add('ocupado');
+        celda.textContent = '-';
+        return;
+      }
+      const boton = document.createElement('button');
+      boton.textContent = 'Elegir';
+      boton.onclick = () => {
+        slotSeleccionado = slot.inicio;
+        tabla.querySelectorAll('td.estado button').forEach((otro) => {
+          otro.textContent = 'Elegir';
+          otro.disabled = false;
+        });
+        boton.textContent = 'horario seleccionado';
+        boton.disabled = true;
+        $('reservar').disabled = false;
+      };
+      celda.appendChild(boton);
+    });
+  }
+
+  async function reservar() {
+    if (!slotSeleccionado) {
+      return aviso($('avisoReserva'), 'Primero elige un horario libre.', false);
+    }
+    const cuerpo = {
+      pacienteId: $('paciente').value,
+      medicoId: $('medico').value,
+      fechaHora: slotSeleccionado,
+      motivo: $('motivo').value.trim() || null
+    };
+    const { estado, cuerpo: respuesta } = await pedir('/api/v1/citas', {
+      method: 'POST',
+      body: JSON.stringify(cuerpo)
+    });
+    if (estado === 201) {
+      aviso($('avisoReserva'), 'Cita reservada. Id: ' + respuesta.id, true);
+      $('reservar').disabled = true;
+      slotSeleccionado = null;
+      buscarDisponibilidad();
+      return;
+    }
+    if (estado === 409) {
+      aviso($('avisoReserva'), 'HTTP 409 ' + respuesta.codigo + ': ' + respuesta.mensaje, false);
+      return;
+    }
+    aviso($('avisoReserva'), 'HTTP ' + estado + ': ' + (respuesta.codigo || '') + ' '
+      + (respuesta.mensaje || 'la peticion fue rechazada'), false);
+  }
+
+  const hoy = new Date();
+  const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoy.getDate()).padStart(2, '0');
+  $('fecha').value = `${hoy.getFullYear()}-${mes}-${dia}`;
+  $('buscar').onclick = buscarDisponibilidad;
+  $('reservar').onclick = reservar;
+  cargarMedicos();
+  cargarPacientes();
+</script>
+</body>
+</html>

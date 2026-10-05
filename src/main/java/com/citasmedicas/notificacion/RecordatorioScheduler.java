@@ -18,8 +18,8 @@ public class RecordatorioScheduler {
         this.procesador = procesador;
     }
 
-    @Scheduled(initialDelayString = "${citas.notificaciones.intervalo-barrido:PT1M}",
-            fixedDelayString = "${citas.notificaciones.intervalo-barrido:PT1M}")
+    @Scheduled(initialDelayString = "${citas.notificaciones.intervalo-barrido-milis:60000}",
+            fixedDelayString = "${citas.notificaciones.intervalo-barrido-milis:60000}")
     public void barrerRecordatorios() {
         try {
             int programados = notificacionService.programarRecordatorios();

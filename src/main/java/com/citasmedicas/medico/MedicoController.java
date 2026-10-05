@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.citasmedicas.medico.dto.CrearMedicoRequest;
 import com.citasmedicas.medico.dto.MedicoResponse;
+import com.citasmedicas.seguridad.Permitido;
+import com.citasmedicas.seguridad.Rol;
 
 @RestController
 @RequestMapping("/api/v1/medicos")
@@ -28,6 +30,7 @@ public class MedicoController {
     }
 
     @PostMapping
+    @Permitido({Rol.RECEPCION, Rol.ADMIN})
     public ResponseEntity<MedicoResponse> crear(@Valid @RequestBody CrearMedicoRequest request) {
         MedicoResponse response = service.crear(request);
         return ResponseEntity.created(URI.create("/api/v1/medicos/" + response.id())).body(response);
@@ -44,6 +47,7 @@ public class MedicoController {
     }
 
     @PutMapping("/{id}/desactivar")
+    @Permitido({Rol.RECEPCION, Rol.ADMIN})
     public MedicoResponse desactivar(@PathVariable UUID id) {
         return service.desactivar(id);
     }

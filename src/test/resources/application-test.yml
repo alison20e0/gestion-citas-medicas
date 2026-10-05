@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:5443/citas_test}
+    username: ${TEST_DB_USER:admin}
+    password: ${TEST_DB_PASSWORD:secretpassword123}
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+citas:
+  notificaciones:
+    habilitadas: false
+    intervalo-barrido-milis: 3600000
+    espera-reintento-inicial: 1s
+
+logging:
+  level:
+    com.citasmedicas: INFO
+    org.hibernate.SQL: WARN

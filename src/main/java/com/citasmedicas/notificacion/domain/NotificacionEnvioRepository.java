@@ -19,7 +19,7 @@ public interface NotificacionEnvioRepository extends JpaRepository<NotificacionE
     @Query("select n from NotificacionEnvio n where n.estado in "
             + "(com.citasmedicas.notificacion.domain.EstadoEnvio.PENDIENTE, "
             + "com.citasmedicas.notificacion.domain.EstadoEnvio.FALLIDO) "
-            + "and n.proximoIntento <= :ahora and n.intentos < :maxIntentos order by n.proximoIntento asc")
+            + "and n.proximoIntento <= :ahora and n.intentos <= :maxIntentos order by n.proximoIntento asc")
     List<NotificacionEnvio> findListosParaEnvio(@Param("ahora") Instant ahora, @Param("maxIntentos") int maxIntentos,
             Pageable pageable);
 

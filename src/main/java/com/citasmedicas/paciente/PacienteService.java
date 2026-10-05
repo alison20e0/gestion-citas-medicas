@@ -10,6 +10,8 @@ import com.citasmedicas.paciente.domain.Paciente;
 import com.citasmedicas.paciente.domain.PacienteRepository;
 import com.citasmedicas.paciente.dto.CrearPacienteRequest;
 import com.citasmedicas.paciente.dto.PacienteResponse;
+import com.citasmedicas.seguridad.Alcances;
+import com.citasmedicas.seguridad.UsuarioActual;
 import com.citasmedicas.shared.error.ConflictException;
 import com.citasmedicas.shared.error.NotFoundException;
 
@@ -34,8 +36,10 @@ public class PacienteService {
     }
 
     @Transactional(readOnly = true)
-    public PacienteResponse buscarPorId(UUID id) {
-        return PacienteResponse.from(obtener(id));
+    public PacienteResponse buscarPorId(UsuarioActual usuario, UUID id) {
+        Paciente paciente = obtener(id);
+        Alcances.exigirLecturaDeFicha(usuario, paciente.getId());
+        return PacienteResponse.from(paciente);
     }
 
     @Transactional(readOnly = true)

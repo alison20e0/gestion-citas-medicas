@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.citasmedicas.cita.domain.Cita;
@@ -24,6 +25,9 @@ import com.citasmedicas.notificacion.domain.NotificacionEnvio;
 import com.citasmedicas.notificacion.domain.NotificacionEnvioRepository;
 import com.citasmedicas.notificacion.domain.NotificacionTipo;
 import com.citasmedicas.notificacion.dto.NotificacionEnvioResponse;
+import com.citasmedicas.seguridad.Alcances;
+import com.citasmedicas.seguridad.UsuarioActual;
+import com.citasmedicas.shared.error.NotFoundException;
 
 @Service
 public class NotificacionService {
@@ -50,7 +54,7 @@ public class NotificacionService {
         this.zona = properties.zoneId();
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<UUID> programarConfirmacion(Cita cita) {
         if (existeNotificacion(cita.getId(), REFERENCIA_CONFIRMACION)) {
             return Optional.empty();
@@ -82,7 +86,10 @@ public class NotificacionService {
     }
 
     @Transactional(readOnly = true)
-    public List<NotificacionEnvioResponse> listarPorCita(UUID citaId) {
+    public List<NotificacionEnvioResponse> listarPorCita(UsuarioActual usuario, UUID citaId) {
+        Cita cita = citaRepository.findDetallePorId(citaId)
+                .orElseThrow(() -> new NotFoundException("Cita", citaId));
+        Alcances.exigirLecturaDeCita(usuario, cita.getPaciente().getId(), cita.getMedico().getId());
         return envioRepository.findByCitaIdOrderByCreadoEnDesc(citaId, PageRequest.of(0, LIMITE_LISTADO)).stream()
                 .map(NotificacionEnvioResponse::from)
                 .toList();
@@ -90,7 +97,7 @@ public class NotificacionService {
 
     private boolean existeNotificacion(UUID citaId, String referencia) {
         return envioRepository.existsByCitaIdAndReferenciaAndEstadoIn(citaId, referencia,
-                List.of(EstadoEnvio.PENDIENTE, EstadoEnvio.ENVIADO, EstadoEnvio.FALLIDO));
+                List.of(EstadoEnvio.PENDIENTE, EstadoEnvio.ENVIADO, EstadoEnvio.FALLIDO, EstadoEnvio.DESCARTADO));
     }
 
     private NotificacionEnvioResponse programar(Cita cita, NotificacionTipo tipo, String referencia, String cuerpo) {

@@ -10,14 +10,4 @@ logs/
 .env
 .env.*
 !.env.example
-index.js
-package.json
-manage.py
-requirements.txt
-settings.py
-__pycache__/
-*.pyc
-db.sqlite3
-Dockerfile
-docker-compose.yml
 README.md

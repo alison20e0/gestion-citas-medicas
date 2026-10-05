@@ -13,6 +13,7 @@ FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S spring && adduser -S spring -G spring
 WORKDIR /app
 COPY --from=build /workspace/target/gestion-citas-medicas.jar app.jar
+COPY static ./static
 RUN chown -R spring:spring /app
 USER spring:spring
 

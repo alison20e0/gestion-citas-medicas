@@ -41,18 +41,19 @@ management:
       show-details: always
 
 citas:
-  zona-horaria: ${CITA_ZONA_HORARIA:America/Mexico_City}
+  zona-horaria: ${CITA_ZONA_HORARIA:America/Guayaquil}
+  paginas-estaticas: ${PAGINAS_ESTATICAS:./static}
   notificaciones:
     habilitadas: ${NOTIFICACIONES_HABILITADAS:true}
-    horas-anticipacion: 24
-    max-intentos: 4
-    espera-reintento-inicial: 30s
-    backoff-multiplicador: 2.0
-    intervalo-barrido: 60s
-    lote-maximo: 25
+    horas-anticipacion: ${NOTIFICACIONES_HORAS_ANTICIPACION:24}
+    max-intentos: ${NOTIFICACIONES_MAX_INTENTOS:4}
+    espera-reintento-inicial: ${NOTIFICACIONES_ESPERA_REINTENTO:30s}
+    backoff-multiplicador: ${NOTIFICACIONES_BACKOFF:2.0}
+    intervalo-barrido-milis: ${NOTIFICACIONES_INTERVALO_BARRIDO_MS:60000}
+    lote-maximo: ${NOTIFICACIONES_LOTE_MAXIMO:25}
     simulacion-fallo: ${NOTIFICACIONES_SIMULAR_FALLO:false}
-    disparador-fallo: "#fallar"
-    simulacion-latencia: 120ms
+    disparador-fallo: ${NOTIFICACIONES_DISPARADOR_FALLO:#fallar}
+    simulacion-latencia: ${NOTIFICACIONES_LATENCIA:120ms}
 
 logging:
   level:

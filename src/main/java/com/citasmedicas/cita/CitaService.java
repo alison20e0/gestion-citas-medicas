@@ -41,6 +41,8 @@ import com.citasmedicas.medico.domain.Medico;
 import com.citasmedicas.medico.domain.MedicoRepository;
 import com.citasmedicas.paciente.domain.Paciente;
 import com.citasmedicas.paciente.domain.PacienteRepository;
+import com.citasmedicas.seguridad.Alcances;
+import com.citasmedicas.seguridad.UsuarioActual;
 import com.citasmedicas.shared.error.ConflictException;
 import com.citasmedicas.shared.error.NotFoundException;
 import com.citasmedicas.shared.error.ReglaNegocioException;
@@ -67,7 +69,8 @@ public class CitaService {
     }
 
     @Transactional(readOnly = true)
-    public DisponibilidadResponse disponibilidad(UUID medicoId, LocalDate fecha) {
+    public DisponibilidadResponse disponibilidad(UsuarioActual usuario, UUID medicoId, LocalDate fecha) {
+        Alcances.exigirDisponibilidad(usuario, medicoId);
         Medico medico = medicoRepository.findById(medicoId)
                 .orElseThrow(() -> new NotFoundException("Medico", medicoId));
         LocalDate fechaConsultada = fecha == null ? LocalDate.now(zona).plusDays(1) : fecha;
@@ -86,7 +89,7 @@ public class CitaService {
         List<SlotResponse> slots = new ArrayList<>();
         for (LocalTime hora : medico.slotsDelDia(fechaConsultada.getDayOfWeek())) {
             ZonedDateTime inicioZona = ZonedDateTime.of(fechaConsultada, hora, zona);
-            OffsetDateTime inicio = inicioZona.withZoneSameInstant(ZoneOffset.UTC);
+            OffsetDateTime inicio = inicioZona.withZoneSameInstant(ZoneOffset.UTC).toOffsetDateTime();
             int duracion = duracionDelSlot(medico, fechaConsultada.getDayOfWeek(), hora);
             UUID citaExistente = ocupadas.get(inicio);
             boolean disponible = citaExistente == null && inicio.toInstant().isAfter(ahora);
@@ -137,8 +140,9 @@ public class CitaService {
     }
 
     @Transactional
-    public CitaResponse cancelar(UUID citaId, CancelarCitaRequest request) {
+    public CitaResponse cancelar(UsuarioActual usuario, UUID citaId, CancelarCitaRequest request) {
         Cita cita = obtenerBloqueada(citaId);
+        Alcances.exigirCancelacionDeCita(usuario, cita.getPaciente().getId());
         if (cita.getEstado() == EstadoCita.CANCELADA) {
             throw new ConflictException("CITA_Y_CANCELADA", "La cita ya se encuentra cancelada");
         }
@@ -156,21 +160,24 @@ public class CitaService {
     }
 
     @Transactional(readOnly = true)
-    public CitaResponse buscarPorId(UUID citaId) {
-        return citaRepository.findDetallePorId(citaId)
-                .map(CitaResponse::from)
+    public CitaResponse buscarPorId(UsuarioActual usuario, UUID citaId) {
+        Cita cita = citaRepository.findDetallePorId(citaId)
                 .orElseThrow(() -> new NotFoundException("Cita", citaId));
+        Alcances.exigirLecturaDeCita(usuario, cita.getPaciente().getId(), cita.getMedico().getId());
+        return CitaResponse.from(cita);
     }
 
     @Transactional(readOnly = true)
-    public List<CitaResponse> listarPorPaciente(UUID pacienteId, int limite) {
+    public List<CitaResponse> listarPorPaciente(UsuarioActual usuario, UUID pacienteId, int limite) {
+        Alcances.exigirAlcancePaciente(usuario, pacienteId);
         return citaRepository.findPorPaciente(pacienteId, page(limite)).stream()
                 .map(CitaResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<CitaResponse> listarPorMedico(UUID medicoId, int limite) {
+    public List<CitaResponse> listarPorMedico(UsuarioActual usuario, UUID medicoId, int limite) {
+        Alcances.exigirAlcanceMedico(usuario, medicoId);
         return citaRepository.findPorMedico(medicoId, page(limite)).stream()
                 .map(CitaResponse::from)
                 .toList();
@@ -218,7 +225,7 @@ public class CitaService {
     }
 
     private OffsetDateTime inicioDelDiaUtc(LocalDate fecha) {
-        return ZonedDateTime.of(fecha, LocalTime.MIN, zona).withZoneSameInstant(ZoneOffset.UTC);
+        return ZonedDateTime.of(fecha, LocalTime.MIN, zona).withZoneSameInstant(ZoneOffset.UTC).toOffsetDateTime();
     }
 
     private PageRequest page(int limite) {
